@@ -5,9 +5,9 @@ Sistema Livegarden embarcado
 
 :sparkles:
 
-	:-1:
+:-1:
   
-	:+1:
+:+1:
   
-	:clap:
+:clap:
   
