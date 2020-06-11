@@ -1,55 +1,46 @@
 #include <WiFi.h>
+#include "Thread.h"
+#include "ThreadController.h"
+#include "FirebaseESP32.h" //2. Include Firebase ESP32 library (this library)
 
-//2. Include Firebase ESP32 library (this library)
-#include "FirebaseESP32.h"
+// ================================ FIREBASE ==================================
+FirebaseData firebaseData; // Declare the Firebase Data object in the global scope
 
-#define FIREBASE_HOST "livegarden-514ff.firebaseio.com"  //Do not include https: in FIREBASE_HOST
-#define FIREBASE_AUTH "7TtblK1IRMb5WlcZDGv0YchzqIp99BoZQrreZygM"
+char FIREBASE_HOST[] = "livegarden-514ff.firebaseio.com";  //Do not include https: in FIREBASE_HOST
+char FIREBASE_AUTH[] = "7TtblK1IRMb5WlcZDGv0YchzqIp99BoZQrreZygM";
 
-//3. Declare the Firebase Data object in the global scope
-FirebaseData firebaseData;
+String dbPath    = "/livegarden-514ff";
+String userID    = "7aE2fDGsy3hLgb7QsEULSJKmLyp1";
+String plantID   = "1";
+String plantPath = "/users/" + userID + "/Plant/" + plantID + "/";
 
+// =================================== WIFI =====================================
 char WIFI_SSID[]     = "VERO - Casa";
 char WIFI_PASSWORD[] = "Eng3nh@r1@";
 
-String dbPath   = "/livegarden-514ff";
-String userID = "7aE2fDGsy3hLgb7QsEULSJKmLyp1";
-String plantID = "1";
-String plantPath = "/users/" + userID + "/Plant/" + plantID + "/";
+// ============================== Threads ======================================
 
-const int saida1 = 19;
-const int saida2 = 18;
+void Function_thread1(){
+   JSON(firebaseData, plantPath);
+}
 
-bool swState = false;
+void Function_thread2(){
+    Serial.println(userName(firebaseData, plantPath));
+}
 
-//WiFiServer server(80);
+ThreadController cpu;
 
-// Current color values
-int redValue   = 0;
-int greenValue = 0;
-int blueValue  = 0;
+Thread threadF1;
+Thread threadF2;
 
-struct preset_time_t
-{
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int duration;
-  int state;
-  int pump_index;
-  int active;
-  int inactive;
-};
-
-void connectWifi(char ID[], char PASS[])
-{
+// =====================================================================================
+void connectWifi(char ID[], char PASS[]) {
   Serial.print("Connecting to : ");
   Serial.println(ID);
 
   WiFi.begin(ID, PASS);
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(" .");
   }
@@ -60,47 +51,34 @@ void connectWifi(char ID[], char PASS[])
   Serial.println();
 }
 
-void connectFirebase(char HOST[], char AUTH[], FirebaseData &data)
-{
+void connectFirebase(char HOST[], char AUTH[], FirebaseData &data) {
   // Conectando ao Firebase
   Firebase.begin(HOST, AUTH);
   Firebase.reconnectWiFi(true);
-  
-  if (!Firebase.beginStream(data, dbPath + plantPath))
-  {
-    Serial.println(" Não foi possível Comunicar !");
+
+  if (!Firebase.beginStream(data, dbPath + plantPath))  {
+    Serial.println("Não foi possível Comunicar !");
     Serial.println("MOTIVO:  " + data.errorReason());
     Serial.println();
   }
+
   Firebase.set(data, dbPath + plantPath, "idle");
-  //Firebase.setStreamCallback(firebaseData1, streamCallback, streamTimeoutCallback);
-//  server.begin();
   Serial.println(" SERVER STARTED");
   Serial.println( );
 }
 
-void streamCallback(StreamData data)
-{
-  if (data.dataType() == "boolean") {
-    if (data.boolData())
-      Serial.println("Set " + dbPath + plantPath + " to High");
-    else
-      Serial.println("Set " + dbPath + plantPath + " to Low");
-//    digitalWrite(ledPin, data.boolData());
-  }
-}
-
-void streamTimeoutCallback(bool timeout)
-{
-  if (timeout)
-  {
-    Serial.println();
-    Serial.println("Stream timeout, resume streaming...");
-    Serial.println();
-  }
-}
-
 void setup() {
+  threadF1.setInterval(5000);
+  threadF1.onRun(Function_thread1);
+  
+  threadF2.setInterval(2500);
+  threadF2.onRun(Function_thread2);
+
+  cpu.add(&threadF1);
+  cpu.add(&threadF2);
+
+
+  
   //Inicializa o monitor Serial
   Serial.begin(115200);
 
@@ -108,43 +86,43 @@ void setup() {
   connectWifi(WIFI_SSID, WIFI_PASSWORD);
 
   // Conectando ao Firebase
- connectFirebase(FIREBASE_HOST,  FIREBASE_AUTH, firebaseData);
-  // Conectando ao Firebase
-//  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
-//  Firebase.reconnectWiFi(true);
-//  
-//  if (!Firebase.beginStream(firebaseData, dbPath + plantPath))
-//  {
-//    Serial.println(" Não foi possível Comunicar !");
-//    Serial.println("MOTIVO:  " + firebaseData.errorReason());
-//    Serial.println();
-//  }
-//  Firebase.set(firebaseData, dbPath + plantPath, "idle");
-//  //Firebase.setStreamCallback(firebaseData1, streamCallback, streamTimeoutCallback);
-////  server.begin();
-//  Serial.println(" SERVER STARTED");
-//  Serial.println( );
-//
-//  if (Firebase.pathExist(firebaseData, dbPath + plantPath))
-//  {
-//    Serial.println("Path Encontrado no Firebase");
-//    Serial.println();
-//  }
-  // DELETE SOME NODE
-  // Firebase.deleteNode(firebaseData, "/green");
+  connectFirebase(FIREBASE_HOST, FIREBASE_AUTH, firebaseData);
 }
 
-
 void loop() {
-  if (Firebase.getInt(firebaseData, plantPath+"TimeToRotate"))
-  {
-    if (firebaseData.dataType() == "int")
-    {
-      Serial.println(firebaseData.intData());
+
+  cpu.run();
+//  int TimeToRotate = timeToRotate(firebaseData, plantPath);
+//  Serial.println(TimeToRotate);
+
+
+}
+
+void JSON(FirebaseData  &data, String plantPath) {
+  if (Firebase.getJSON(data, plantPath)) {
+    Serial.println(data.jsonString());
+  } else {
+    //Failed to get JSON data at defined database path, print out the error reason
+    Serial.println(data.errorReason());
+  }
+}
+
+String userName(FirebaseData &data, String plantPath) {
+  if (Firebase.getString(data, plantPath + "Name")) {
+    if (data.dataType() == "string") {
+      return (data.stringData());
     }
-  } else
-  {
-    Serial.println(firebaseData.errorReason());
-    Serial.println(dbPath + plantPath+"TimeToRotate");
+  } else {
+    Serial.println(data.errorReason());
+  }
+}
+
+int timeToRotate(FirebaseData &data, String plantPath) {
+  if (Firebase.getInt(data, plantPath + "TimeToRotate"))  {
+    if (data.dataType() == "int") {
+      return (data.intData());
+    }
+  } else {
+    Serial.println(data.errorReason());
   }
 }
