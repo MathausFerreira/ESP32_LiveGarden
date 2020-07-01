@@ -4,7 +4,7 @@ class FirebaseCodeM {
   private:
 
   public:
-    // ================================ FIREBASE ==================================
+    // ===================================== FIREBASE =======================================
     FirebaseData firebaseData; // Declare the Firebase Data object in the global scope
     //FirebaseJson json;
     //FirebaseJsonData jsonData;
@@ -13,11 +13,11 @@ class FirebaseCodeM {
     String FIREBASE_AUTH = "7TtblK1IRMb5WlcZDGv0YchzqIp99BoZQrreZygM";
 
     String dbPath    = "/livegarden-514ff";
-    String userID    = "7aE2fDGsy3hLgb7QsEULSJKmLyp1";
-    String plantID   = "1";
+    String userID    = "RzDlCYsuvPUqsi1Tk5i62nyRaZj2";
+    String plantID   = "-MAmcIoXh3G8ZtnxaRDi";
     String plantPath = "/users/" + userID + "/Plant/" + plantID + "/";
 
-    // =====================================================================================
+    // ======================================================================================
 
     void connectFirebase() {
       // Conectando ao Firebase
@@ -83,7 +83,7 @@ class FirebaseCodeM {
     }
     String autoRotate() {
       if (Firebase.getBool(firebaseData, plantPath + "AutoRotate"))  {
-        if (firebaseData.dataType() == "boolean") {
+        if (firebaseData.dataType() == "string") {
           return (firebaseData.stringData());
         }
       } else {
@@ -99,9 +99,20 @@ class FirebaseCodeM {
         Serial.println(firebaseData.errorReason());
       }
     }
-    // =================================== Bolean ==============================================]
+    // =================================== Bolean ===============================================
+
+    // =================================== Inteiros =============================================
     
-    // =================================== Inteiros ==============================================
+    int ONOFF() {
+      if (Firebase.getInt(firebaseData, plantPath + "ONOFF"))  {
+        if (firebaseData.dataType() == "int") {
+          return (firebaseData.intData());
+        }
+      } else {
+        Serial.println(firebaseData.errorReason());
+      }
+    }
+    
     int timeToRotate() {
       if (Firebase.getInt(firebaseData, plantPath + "TimeToRotate"))  {
         if (firebaseData.dataType() == "int") {
@@ -121,7 +132,7 @@ class FirebaseCodeM {
         Serial.println(firebaseData.errorReason());
       }
     }
-    
+
     int iterationFrequency() {
       if (Firebase.getInt(firebaseData, plantPath + "IterationFrequency"))  {
         if (firebaseData.dataType() == "int") {
